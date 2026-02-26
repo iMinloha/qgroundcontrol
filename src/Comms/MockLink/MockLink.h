@@ -87,6 +87,13 @@ public:
     void clearReceivedMavlinkMessageCounts() { _receivedMavlinkMessageCountMap.clear(); }
     int receivedMavlinkMessageCount(uint32_t messageId) const { return _receivedMavlinkMessageCountMap.value(messageId, 0); }
 
+    struct LogRequestDataParams {
+        uint32_t offset;
+        uint32_t count;
+    };
+    QList<LogRequestDataParams> getLogRequestDataHistory() const { return _logRequestDataHistory; }
+    void clearLogRequestDataHistory() { _logRequestDataHistory.clear(); }
+
     enum RequestMessageFailureMode_t {
         FailRequestMessageNone,
         FailRequestMessageCommandAcceptedMsgNotSent,
@@ -113,6 +120,23 @@ public:
     void setParamRequestReadFailureMode(ParamRequestReadFailureMode_t mode) {
         _paramRequestReadFailureMode = mode;
         _paramRequestReadFailureFirstAttemptPending = (mode == FailParamRequestReadFirstAttemptNoResponse);
+    }
+
+    enum LogDownloadFailureMode_t {
+        FailLogDownloadNone,                ///< Normal behavior
+        FailLogDownloadDropEveryNth,        ///< Drop every Nth chunk (configurable)
+        FailLogDownloadStopMidstream,       ///< Stop sending after 50% downloaded
+        FailLogDownloadDropRange,           ///< Drop a specific range of chunks (creates multi-chunk gap)
+        FailLogDownloadNoResponse,          ///< Never respond to LOG_REQUEST_DATA
+    };
+    void setLogDownloadFailureMode(LogDownloadFailureMode_t mode, int nthChunk = 3) {
+        _logDownloadFailureMode = mode;
+        _logDownloadDropEveryNth = nthChunk;
+        _logDownloadChunksSent = 0;
+    }
+    void setLogDownloadDropRange(int startChunk, int endChunk) {
+        _logDownloadDropRangeStart = startChunk;
+        _logDownloadDropRangeEnd = endChunk;
     }
 
     static MockLink *startPX4MockLink(bool sendStatusText, bool enableCamera, bool enableGimbal, MockConfiguration::FailureMode_t failureMode = MockConfiguration::FailNone);
@@ -303,12 +327,18 @@ private:
     bool _paramSetFailureFirstAttemptPending = false;
     ParamRequestReadFailureMode_t _paramRequestReadFailureMode = FailParamRequestReadNone;
     bool _paramRequestReadFailureFirstAttemptPending = false;
+    LogDownloadFailureMode_t _logDownloadFailureMode = FailLogDownloadNone;
+    int _logDownloadDropEveryNth = 3;    ///< For FailLogDownloadDropEveryNth mode
+    int _logDownloadChunksSent = 0;      ///< Counter for chunks sent
+    int _logDownloadDropRangeStart = 0;  ///< For FailLogDownloadDropRange mode: first chunk to drop
+    int _logDownloadDropRangeEnd = 0;    ///< For FailLogDownloadDropRange mode: last chunk to drop (inclusive)
 
     QMap<MAV_CMD, int> _receivedMavCommandCountMap;
     QMap<MAV_CMD, QMap<int, int>> _receivedMavCommandByCompCountMap;
     QMap<uint32_t, int> _receivedRequestMessageCountMap;
     QMap<int, QMap<int, int>> _receivedRequestMessageByCompAndMsgCountMap;
     QMap<uint32_t, int> _receivedMavlinkMessageCountMap;
+    QList<LogRequestDataParams> _logRequestDataHistory;
     QMap<int, QMap<QString, QVariant>> _mapParamName2Value;
     QMap<int, QMap<QString, MAV_PARAM_TYPE>> _mapParamName2MavParamType;
 
