@@ -53,6 +53,15 @@ void HashCheckTest::_connectAndWaitForParams()
     QCOMPARE(arguments.at(0).toBool(), true);
 }
 
+void HashCheckTest::_disconnectAndSettle()
+{
+    _mockLink->disconnect();
+    _mockLink = nullptr;
+    QSignalSpy spyDisconnect(MultiVehicleManager::instance(), &MultiVehicleManager::activeVehicleChanged);
+    QVERIFY(UnitTest::waitForSignal(spyDisconnect, TestTimeout::longMs(), QStringLiteral("activeVehicleChanged")));
+    UnitTest::settleEventLoopForCleanup();
+}
+
 MockLink *HashCheckTest::_startPX4MockLinkNoIncrement(MockConfiguration::FailureMode_t failureMode)
 {
     auto *const mockConfig = new MockConfiguration(QStringLiteral("PX4 MockLink"));
@@ -60,6 +69,21 @@ MockLink *HashCheckTest::_startPX4MockLinkNoIncrement(MockConfiguration::Failure
     mockConfig->setVehicleType(MAV_TYPE_QUADROTOR);
     mockConfig->setIncrementVehicleId(false);
     mockConfig->setFailureMode(failureMode);
+    mockConfig->setDynamic(true);
+
+    SharedLinkConfigurationPtr config = LinkManager::instance()->addConfiguration(mockConfig);
+    if (LinkManager::instance()->createConnectedLink(config)) {
+        return qobject_cast<MockLink *>(config->link());
+    }
+    return nullptr;
+}
+
+MockLink *HashCheckTest::_startPX4MockLinkHighLatency()
+{
+    auto *const mockConfig = new MockConfiguration(QStringLiteral("PX4 HighLatency MockLink"));
+    mockConfig->setFirmwareType(MAV_AUTOPILOT_PX4);
+    mockConfig->setVehicleType(MAV_TYPE_QUADROTOR);
+    mockConfig->setHighLatency(true);
     mockConfig->setDynamic(true);
 
     SharedLinkConfigurationPtr config = LinkManager::instance()->addConfiguration(mockConfig);
@@ -97,12 +121,7 @@ void HashCheckTest::_reconnectCacheHit()
 
     const int vehicleId = _mockLink->vehicleId();
 
-    // Disconnect
-    _mockLink->disconnect();
-    _mockLink = nullptr;
-    QSignalSpy spyDisconnect(MultiVehicleManager::instance(), &MultiVehicleManager::activeVehicleChanged);
-    QVERIFY(UnitTest::waitForSignal(spyDisconnect, TestTimeout::longMs(), QStringLiteral("activeVehicleChanged")));
-    UnitTest::settleEventLoopForCleanup();
+    _disconnectAndSettle();
 
     // Cache file should exist now
     QVERIFY(QFile::exists(ParameterManager::parameterCacheFile(vehicleId, MAV_COMP_ID_AUTOPILOT1)));
@@ -128,11 +147,7 @@ void HashCheckTest::_reconnectCacheMiss()
     _mockLink = _startPX4MockLinkNoIncrement();
     _connectAndWaitForParams();
 
-    _mockLink->disconnect();
-    _mockLink = nullptr;
-    QSignalSpy spyDisconnect(MultiVehicleManager::instance(), &MultiVehicleManager::activeVehicleChanged);
-    QVERIFY(UnitTest::waitForSignal(spyDisconnect, TestTimeout::longMs(), QStringLiteral("activeVehicleChanged")));
-    UnitTest::settleEventLoopForCleanup();
+    _disconnectAndSettle();
 
     // Second connect: same vehicle ID, but change a param so CRC won't match
     _mockLink = _startPX4MockLinkNoIncrement();
@@ -158,11 +173,7 @@ void HashCheckTest::_hashCheckTimeoutCacheHit()
     _mockLink = _startPX4MockLinkNoIncrement();
     _connectAndWaitForParams();
 
-    _mockLink->disconnect();
-    _mockLink = nullptr;
-    QSignalSpy spyDisconnect(MultiVehicleManager::instance(), &MultiVehicleManager::activeVehicleChanged);
-    QVERIFY(UnitTest::waitForSignal(spyDisconnect, TestTimeout::longMs(), QStringLiteral("activeVehicleChanged")));
-    UnitTest::settleEventLoopForCleanup();
+    _disconnectAndSettle();
 
     // Second connect: same vehicle ID, suppress standalone hash check response so it times out
     // But _HASH_CHECK in PARAM_REQUEST_LIST stream should still trigger cache load
@@ -197,6 +208,33 @@ void HashCheckTest::_hashCheckTimeoutNoCache()
     QVERIFY(_mockLink->receivedMavlinkMessageCount(MAVLINK_MSG_ID_PARAM_REQUEST_LIST) > 0);
 }
 
+// Scenario 6: Hash check times out, cache stale — PARAM_REQUEST_LIST stream
+//             delivers _HASH_CHECK, cache CRC mismatch, stream continues normally
+void HashCheckTest::_hashCheckTimeoutCacheStale()
+{
+    _deleteCacheFiles();
+
+    // First connect: populates the cache
+    _mockLink = _startPX4MockLinkNoIncrement();
+    _connectAndWaitForParams();
+
+    _disconnectAndSettle();
+
+    // Second connect: same vehicle ID, change a param so CRC won't match, suppress standalone hash check
+    _mockLink = _startPX4MockLinkNoIncrement();
+    _mockLink->setMockParamValue(MAV_COMP_ID_AUTOPILOT1, QStringLiteral("BAT1_V_CHARGED"), 99.0f);
+    _mockLink->setHashCheckNoResponse(true);
+
+    _connectAndWaitForParams();
+
+    Vehicle *const vehicle = MultiVehicleManager::instance()->activeVehicle();
+    QVERIFY(vehicle);
+    QVERIFY(vehicle->parameterManager()->parametersReady());
+
+    // PARAM_REQUEST_LIST should have been sent (hash check timed out, then cache CRC mismatch in stream)
+    QVERIFY(_mockLink->receivedMavlinkMessageCount(MAVLINK_MSG_ID_PARAM_REQUEST_LIST) > 0);
+}
+
 // Scenario 7: No response at all — hash check timer and param request list timer both exhaust
 void HashCheckTest::_bothTimersExhaust()
 {
@@ -225,6 +263,33 @@ void HashCheckTest::_bothTimersExhaust()
                         + ParameterManager::kTestMaxInitialRequestTimeMs
                         + TestTimeout::shortMs();
     QVERIFY_NO_SIGNAL_WAIT(spyParamsReady, maxWaitMs);
+}
+
+// Scenario 8: Cache deleted between connects — hash check response arrives but no cache file
+void HashCheckTest::_cacheDeletedBetweenConnects()
+{
+    _deleteCacheFiles();
+
+    // First connect: populates the cache
+    _mockLink = _startPX4MockLinkNoIncrement();
+    _connectAndWaitForParams();
+
+    _disconnectAndSettle();
+
+    // Delete cache files before second connect
+    _deleteCacheFiles();
+
+    // Second connect: same vehicle ID, hash check response arrives but no cache file → PARAM_REQUEST_LIST
+    _mockLink = _startPX4MockLinkNoIncrement();
+    _connectAndWaitForParams();
+
+    Vehicle *const vehicle = MultiVehicleManager::instance()->activeVehicle();
+    QVERIFY(vehicle);
+    QVERIFY(vehicle->parameterManager()->parametersReady());
+    QVERIFY(!vehicle->parameterManager()->missingParameters());
+
+    // PARAM_REQUEST_LIST should have been sent (no cache file despite hash check response)
+    QVERIFY(_mockLink->receivedMavlinkMessageCount(MAVLINK_MSG_ID_PARAM_REQUEST_LIST) > 0);
 }
 
 // Scenario 9: Manual refresh after initial load — should skip hash check, go straight to PARAM_REQUEST_LIST
@@ -269,6 +334,63 @@ void HashCheckTest::_arduPilotSkipsHashCheck()
     // For ArduPilot, the path is FTP-based, not hash-check-based
 
     _disconnectMockLink();
+}
+
+// Scenario 11: High latency link — signals ready immediately, no hash check
+void HashCheckTest::_highLatencyLink()
+{
+    _deleteCacheFiles();
+
+    _mockLink = _startPX4MockLinkHighLatency();
+
+    MultiVehicleManager *const vehicleMgr = MultiVehicleManager::instance();
+    QVERIFY(vehicleMgr);
+
+    QSignalSpy spyVehicle(vehicleMgr, &MultiVehicleManager::activeVehicleAvailableChanged);
+    QVERIFY_SIGNAL_WAIT(spyVehicle, TestTimeout::mediumMs());
+
+    Vehicle *const vehicle = vehicleMgr->activeVehicle();
+    QVERIFY(vehicle);
+
+    // High latency: parametersReady is signalled immediately with missingParameters=true
+    QSignalSpy spyParamsReady(vehicleMgr, &MultiVehicleManager::parameterReadyVehicleAvailableChanged);
+    QVERIFY_SIGNAL_WAIT(spyParamsReady, TestTimeout::longMs());
+
+    QVERIFY(vehicle->parameterManager()->parametersReady());
+    QVERIFY(vehicle->parameterManager()->missingParameters());
+
+    // No standalone PARAM_REQUEST_READ for _HASH_CHECK should have been sent
+    QCOMPARE(_mockLink->receivedMavlinkMessageCount(MAVLINK_MSG_ID_PARAM_REQUEST_READ), 0);
+}
+
+// Scenario 12: Log replay — same skip path as high latency in refreshAllParameters()
+//              Both share: if (isHighLatency || _logReplay) { signal ready immediately }
+//              MockLink doesn't support isLogReplay(), so we use setHighLatency(true)
+//              to exercise the shared code path, following InitialConnectTest's convention.
+void HashCheckTest::_logReplay()
+{
+    _deleteCacheFiles();
+
+    _mockLink = _startPX4MockLinkHighLatency();
+
+    MultiVehicleManager *const vehicleMgr = MultiVehicleManager::instance();
+    QVERIFY(vehicleMgr);
+
+    QSignalSpy spyVehicle(vehicleMgr, &MultiVehicleManager::activeVehicleAvailableChanged);
+    QVERIFY_SIGNAL_WAIT(spyVehicle, TestTimeout::mediumMs());
+
+    Vehicle *const vehicle = vehicleMgr->activeVehicle();
+    QVERIFY(vehicle);
+
+    QSignalSpy spyParamsReady(vehicleMgr, &MultiVehicleManager::parameterReadyVehicleAvailableChanged);
+    QVERIFY_SIGNAL_WAIT(spyParamsReady, TestTimeout::longMs());
+
+    // Log replay path: parametersReady signalled immediately, missingParameters=true, no param loading
+    QVERIFY(vehicle->parameterManager()->parametersReady());
+    QVERIFY(vehicle->parameterManager()->missingParameters());
+
+    // No hash check or param request list traffic should occur
+    QCOMPARE(_mockLink->receivedMavlinkMessageCount(MAVLINK_MSG_ID_PARAM_REQUEST_READ), 0);
 }
 
 UT_REGISTER_TEST(HashCheckTest, TestLabel::Integration, TestLabel::Vehicle, TestLabel::Serial)
