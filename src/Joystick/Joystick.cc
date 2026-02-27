@@ -1,3 +1,15 @@
+/****************************************************************************
+ *
+ * (c) 2009-2024 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ *
+ * QGroundControl is licensed according to the terms in the file
+ * COPYING.md in the root of the source code directory.
+ *
+ ****************************************************************************/
+
+
+#define GRIPPER_ACTION_RELEASE GRIPPER_ACTION_OPEN
+#define GRIPPER_ACTION_GRAB GRIPPER_ACTION_CLOSE
 #include "Joystick.h"
 #include "MavlinkAction.h"
 #include "MavlinkActionManager.h"

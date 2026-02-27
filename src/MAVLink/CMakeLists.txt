@@ -30,6 +30,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_
 
 message(STATUS "QGC: Building MAVLink")
 
+if(NOT USE_SYSTEM_MAVLINK)
 CPMAddPackage(
     NAME mavlink
     GIT_REPOSITORY ${QGC_MAVLINK_GIT_REPO}
@@ -38,15 +39,33 @@ CPMAddPackage(
         "MAVLINK_DIALECT ${QGC_MAVLINK_DIALECT}"
         "MAVLINK_VERSION ${QGC_MAVLINK_VERSION}"
 )
+else()
+set(mavlink_SOURCE_DIR /usr/include/c_library_v2)
+file(GLOB MAVLINK_SOURCES1 ${mavlink_SOURCE_DIR}/*)
+file(GLOB MAVLINK_SOURCES2 ${mavlink_SOURCE_DIR}/all/*)
+file(GLOB MAVLINK_SOURCES3 ${mavlink_SOURCE_DIR}/common/*)
+file(GLOB MAVLINK_SOURCES4 ${mavlink_SOURCE_DIR}/development/*)
 
-if(mavlink_ADDED)
-    add_dependencies(${CMAKE_PROJECT_NAME} mavlink)
-    target_include_directories(${CMAKE_PROJECT_NAME}
-        PRIVATE
-            ${mavlink_BINARY_DIR}/include/mavlink
-            ${mavlink_BINARY_DIR}/include/mavlink/${QGC_MAVLINK_DIALECT}
-    )
+target_sources(${CMAKE_PROJECT_NAME}
+    PRIVATE
+        ${MAVLINK_SOURCES1}
+        ${MAVLINK_SOURCES2}
+        ${MAVLINK_SOURCES3}
+        ${MAVLINK_SOURCES4}
+)
 endif()
+# For QGC all dialects means common and development. Though use of development mavlink code should be restricted to debug builds only.
+target_include_directories(${CMAKE_PROJECT_NAME}
+    PRIVATE
+        ${mavlink_SOURCE_DIR}
+        ${mavlink_SOURCE_DIR}/all
+        ${mavlink_SOURCE_DIR}/common
+        ${mavlink_SOURCE_DIR}/development
+)
+
+# if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+#   target_compile_options(comm PRIVATE -Wno-address-of-packed-member)
+# endif()
 
 # ----------------------------------------------------------------------------
 # LibEvents - MAVLink event handling

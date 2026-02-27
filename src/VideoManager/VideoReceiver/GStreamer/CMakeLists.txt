@@ -20,6 +20,13 @@ if(QGC_ENABLE_GST_VIDEOSTREAMING)
             OPTIONAL_COMPONENTS GlEgl GlWayland GlX11
         )
     endif()
+    if(USE_SYSTEM_GSTQML6)
+	target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE "${LIB_PREFIX}/gstreamer-1.0/libgstqml6.so")
+    else()
+	add_subdirectory(gstqml6gl)
+    endif()
+	
+
 
     # Build GStreamer Qt6 QML GL plugin
     add_subdirectory(gstqml6gl)

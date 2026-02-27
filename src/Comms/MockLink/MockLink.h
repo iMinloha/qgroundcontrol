@@ -290,6 +290,10 @@ private:
     QMutex _availableModesWorkerMutex;
     uint8_t _availableModesMonitorSeqNumber = 0;        ///< Sequence number for the next available mode message to send
 
+    // Mavlink standard modes worker information
+    int _availableModesWorkerNextModeIndex = 0;         ///< 0: not active, +index: next mode the send in sequence, -index: send a single mode (indices are 1-based)
+    uint8_t _availableModesMonitorSeqNumber = 0;        ///< Sequence number for the next available mode message to send
+
     QString _logDownloadFilename;                       ///< Filename for log download which is in progress
     uint32_t _logDownloadCurrentOffset = 0;             ///< Current offset we are sending from
     uint32_t _logDownloadBytesRemaining = 0;            ///< Number of bytes still to send, 0 = send inactive

@@ -35,6 +35,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_
 # PX4 GPS Drivers Integration
 # ============================================================================
 
+if(NOT USE_SYSTEM_PX4-GPSDRIVERS)
 CPMAddPackage(
     NAME px4-gpsdrivers
     GITHUB_REPOSITORY PX4/PX4-GPSDrivers
@@ -42,21 +43,10 @@ CPMAddPackage(
     SOURCE_SUBDIR src
 )
 
-# NOTE: Using file(GLOB) for external dependency sources
-# CONFIGURE_DEPENDS ensures CMake re-runs if files are added/removed
-file(GLOB GPS_DRIVERS_SOURCES
-    CONFIGURE_DEPENDS
-    "${px4-gpsdrivers_SOURCE_DIR}/src/*.c"
-    "${px4-gpsdrivers_SOURCE_DIR}/src/*.cpp"
-    "${px4-gpsdrivers_SOURCE_DIR}/src/*.h"
-)
-
-add_library(px4-gpsdrivers OBJECT ${GPS_DRIVERS_SOURCES})
-target_include_directories(px4-gpsdrivers SYSTEM PRIVATE ${px4-gpsdrivers_SOURCE_DIR}/src)
-target_compile_definitions(px4-gpsdrivers PRIVATE GPS_DEFINITIONS_HEADER=<${CMAKE_CURRENT_SOURCE_DIR}/definitions.h>)
-target_link_libraries(px4-gpsdrivers PRIVATE Qt6::Core)
-qgc_disable_dependency_warnings(px4-gpsdrivers)
-
+else()
+set(px4-gpsdrivers_SOURCE_DIR /usr/src/PX4-GPSDrivers)
+endif()
+file(GLOB GPS_DRIVERS_SOURCES "${px4-gpsdrivers_SOURCE_DIR}/src/*")
 target_sources(${CMAKE_PROJECT_NAME}
     PRIVATE
         definitions.h

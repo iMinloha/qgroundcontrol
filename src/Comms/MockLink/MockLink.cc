@@ -42,6 +42,26 @@ QList<MockLink::FlightMode_t> MockLink::_availableFlightModes = {
     { "MockLink Mode (delayed)",0,                          PX4CustomMode::AUTO_FOLLOW_TARGET,  true,       false},
 };
 
+QList<MockLink::FlightMode_t> MockLink::_availableFlightModes = {
+    // Mode Name                Standard Mode               Custom Mode                         CanBeSet    adv
+    { "Manual",                 0,                          PX4CustomMode::MANUAL,              true,       true },
+    { "Stabilized",             0,                          PX4CustomMode::STABILIZED,          true,       true },
+    { "Acro",                   0,                          PX4CustomMode::ACRO,                true,       true },
+    { "Altitude",               0,                          PX4CustomMode::ALTCTL,              true,       false},
+    { "Offboard",               0,                          PX4CustomMode::OFFBOARD,            true,       true },
+    { "Position",               0,                          PX4CustomMode::POSCTL_POSCTL,       true,       false},
+    { "Orbit",                  0,                          PX4CustomMode::POSCTL_ORBIT,        false,      true },
+    { "Hold",                   0,                          PX4CustomMode::AUTO_LOITER,         true,       true },
+    { "Mission",                0,                          PX4CustomMode::AUTO_MISSION,        true,       true },
+    { "Return",                 0,                          PX4CustomMode::AUTO_RTL,            true,       true },
+    { "Land",                   MAV_STANDARD_MODE_LAND,     PX4CustomMode::AUTO_LAND,           false,      true },
+    { "Precision Landing",      0,                          PX4CustomMode::AUTO_PRECLAND,       true,       true },
+    { "Takeoff",                MAV_STANDARD_MODE_TAKEOFF,  PX4CustomMode::AUTO_TAKEOFF,        false,      false},
+    { "MockLink Mode",          0,                          PX4CustomMode::RATTITUDE,           true,       false},
+    { "(Mode not available)",   0,                          PX4CustomMode::AUTO_RTGS,           false,      false},
+    { "MockLink Mode (delayed)",0,                          PX4CustomMode::AUTO_FOLLOW_TARGET,  true,       false},
+};
+
 MockLink::MockLink(SharedLinkConfigurationPtr &config, QObject *parent)
     : LinkInterface(config, parent)
     , _mockConfig(qobject_cast<const MockConfiguration*>(_config.get()))

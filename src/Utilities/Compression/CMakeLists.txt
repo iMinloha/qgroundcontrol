@@ -43,6 +43,7 @@ if(WIN32)
     )
 endif()
 
+if(NOT USE_SYSTEM_ZLIB)
 CPMAddPackage(
     NAME zlib
     GITHUB_REPOSITORY madler/zlib
@@ -65,19 +66,12 @@ endif()
 
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ZLIB::ZLIBSTATIC)
 
-# Export ZLIB paths for libarchive to find
-set(ZLIB_INCLUDE_DIR "${zlib_SOURCE_DIR};${zlib_BINARY_DIR}" CACHE PATH "" FORCE)
-set(ZLIB_LIBRARY "zlibstatic" CACHE STRING "" FORCE)
-set(ZLIB_LIBRARIES "zlibstatic" CACHE STRING "" FORCE)
-set(ZLIB_FOUND TRUE CACHE BOOL "" FORCE)
-if(NOT TARGET ZLIB::ZLIB)
-    add_library(ZLIB::ZLIB ALIAS zlibstatic)
+else()
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE z)
 endif()
+#===========================================================================#
 
-# ============================================================================
-# XZ (LZMA) Integration - liblzma from xz-utils
-# ============================================================================
-
+if(NOT USE_SYSTEM_XZ-EMBEDDED)
 CPMAddPackage(
     NAME xz
     VERSION 5.8.2
@@ -332,3 +326,24 @@ else()
 endif()
 
 
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE xz)
+else()
+
+add_library(xz STATIC ${LIB_PREFIX}/libxz.a)
+set_target_properties(xz PROPERTIES
+    IMPORTED_LOCATION "${LIB_PREFIX}/libxz.a"
+    INTERFACE_INCLUDE_DIRECTORIES "/usr/include/xz-embedded"
+)
+
+target_compile_definitions(xz
+    PUBLIC
+        XZ_USE_CRC64
+        XZ_USE_CRC32
+        XZ_DEC_ANY_CHECK
+)
+
+
+target_include_directories(xz INTERFACE /usr/include/xz-embedded)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE xz)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE "${LIB_PREFIX}/libxz.a")
+endif()

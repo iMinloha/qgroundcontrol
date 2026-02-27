@@ -40,6 +40,25 @@ PX4FirmwarePlugin::PX4FirmwarePlugin()
     const QString simpleFlightModeName = tr("Simple");
     const QString orbitFlightModeName = tr("Orbit");
 
+    const QString manualFlightModeName = tr("Manual");
+    const QString acroFlightModeName = tr("Acro");
+    const QString stabilizedFlightModeName = tr("Stabilized");
+    const QString rattitudeFlightModeName = tr("Rattitude");
+    const QString altCtlFlightModeName = tr("Altitude");
+    const QString posCtlFlightModeName = tr("Position");
+    const QString offboardFlightModeName = tr("Offboard");
+    const QString readyFlightModeName = tr("Ready");
+    const QString takeoffFlightModeName = tr("Takeoff");
+    const QString holdFlightModeName = tr("Hold");
+    const QString missionFlightModeName = tr("Mission");
+    const QString rtlFlightModeName = tr("Return");
+    const QString landingFlightModeName = tr("Land");
+    const QString preclandFlightModeName = tr("Precision Land");
+    const QString rtgsFlightModeName = tr("Return to Groundstation");
+    const QString followMeFlightModeName = tr("Follow Me");
+    const QString simpleFlightModeName = tr("Simple");
+    const QString orbitFlightModeName = tr("Orbit");
+
     _setModeEnumToModeStringMapping({
         { PX4CustomMode::MANUAL,        manualFlightModeName      },
         { PX4CustomMode::STABILIZED,    stabilizedFlightModeName  },

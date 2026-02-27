@@ -7,6 +7,7 @@
 #include <QtCore/QString>
 #include <QtCore/QThread>
 #include <QtCore/QWaitCondition>
+#include <QElapsedTimer>
 
 #include <memory>
 
