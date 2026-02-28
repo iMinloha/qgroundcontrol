@@ -54,7 +54,7 @@ ADSBTCPLink::ADSBTCPLink(const QHostAddress &hostAddress, quint16 port, QObject 
 
     _processTimer->setInterval(_processInterval); // Set an interval for processing lines
     (void) connect(_processTimer, &QTimer::timeout, this, &ADSBTCPLink::_processLines);
-
+    // a new pa
     // qCDebug(ADSBTCPLinkLog) << Q_FUNC_INFO << this;
 }
 
