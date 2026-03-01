@@ -25,6 +25,7 @@ class ADSBVehicle : public QObject
     Q_OBJECT
     // QML_ELEMENT
 
+    // 对象作为Q_OBJECT需要的元对象系统的支持，必须至少有一个属性、信号或槽。
     Q_PROPERTY(uint             icaoAddress READ    icaoAddress CONSTANT)
     Q_PROPERTY(QString          callsign    READ    callsign    NOTIFY callsignChanged)
     Q_PROPERTY(QGeoCoordinate   coordinate  READ    coordinate  NOTIFY coordinateChanged)

@@ -16,6 +16,9 @@
 
 QGC_LOGGING_CATEGORY(ADSBTCPLinkLog, "qgc.adsb.adsbtcplink")
 
+// ADS-B的构造函数
+// QGC在实现的过程很有信号+槽的精神，即数据都是通过信号传递的
+// 因此在构造函数中，主要是连接信号和槽函数，槽函数就是当信号发出时要执行的函数
 ADSBTCPLink::ADSBTCPLink(const QHostAddress &hostAddress, quint16 port, QObject *parent)
     : QObject(parent)
     , _hostAddress(hostAddress)
@@ -23,6 +26,7 @@ ADSBTCPLink::ADSBTCPLink(const QHostAddress &hostAddress, quint16 port, QObject 
     , _socket(new QTcpSocket(this))
     , _processTimer(new QTimer(this))
 {
+    // 判断是否开始ADSB的日志输出
     if (ADSBTCPLinkLog().isDebugEnabled()) {
         (void) connect(_socket, &QTcpSocket::stateChanged, this, [](QTcpSocket::SocketState state) {
             switch (state) {
@@ -44,15 +48,18 @@ ADSBTCPLink::ADSBTCPLink(const QHostAddress &hostAddress, quint16 port, QObject 
         }, Qt::AutoConnection);
     }
 
+    // 这个是连接错误信号，当发生错误时，会调用这个lambda函数，输出错误信息，并发出errorOccurred信号
     (void) QObject::connect(_socket, &QTcpSocket::errorOccurred, this, [this](QTcpSocket::SocketError error) {
         qCDebug(ADSBTCPLinkLog) << error << _socket->errorString();
         // TODO: Check if it is a critical error or not and send if the socket is stopped/recoverable
         emit errorOccurred(_socket->errorString(), false);
     }, Qt::AutoConnection);
 
+    // 连接readyRead信号，当有数据可读时，会调用_readBytes函数来读取数据
     (void) connect(_socket, &QTcpSocket::readyRead, this, &ADSBTCPLink::_readBytes);
 
-    _processTimer->setInterval(_processInterval); // Set an interval for processing lines
+    _processTimer->setInterval(_processInterval); // 设置50ms处理一次
+    // 定时解码读取到的数据
     (void) connect(_processTimer, &QTimer::timeout, this, &ADSBTCPLink::_processLines);
 
     // qCDebug(ADSBTCPLinkLog) << Q_FUNC_INFO << this;
