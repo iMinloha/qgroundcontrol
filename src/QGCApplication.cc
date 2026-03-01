@@ -122,6 +122,7 @@ QGCApplication::QGCApplication(int &argc, char *argv[], bool unitTesting, bool s
         // Add additional command line option flags here
     };
 
+    // 解码运行参数
     ParseCmdLineOptions(argc, argv, rgCmdLineOptions, std::size(rgCmdLineOptions), false);
 
     // Set up timer for delayed missing fact display
