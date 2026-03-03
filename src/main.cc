@@ -19,6 +19,7 @@
 #include "CmdLineOptParser.h"
 #include "SettingsManager.h"
 #include "MavlinkSettings.h"
+#include <QLoggingCategory>
 
 #if !defined(Q_OS_ANDROID) && !defined(Q_OS_IOS)
     #include <QtWidgets/QMessageBox>
@@ -81,6 +82,8 @@ int main(int argc, char *argv[])
     bool stressUnitTests = false;       // Stress test unit tests
     bool quietWindowsAsserts = false;   // Don't let asserts pop dialog boxes
     QString unitTestOptions;
+
+    QLoggingCategory::setFilterRules("*.debug=true\n*.info=true");
 
     CmdLineOpt_t rgCmdLineOptions[] = {
 #ifdef QT_DEBUG

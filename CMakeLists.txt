@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-SET(GStreamer_ROOT_DIR "E:/gstreamer/1.0/msvc_x86_64")
+SET(GStreamer_ROOT_DIR "D:/gstreamer/1.0/msvc_x86_64")
 
 list(APPEND CMAKE_MODULE_PATH
     ${CMAKE_SOURCE_DIR}/cmake
