@@ -35,7 +35,7 @@ jobs:
       shared: ${{ steps.filter.outputs.shared }}
     steps:
       - name: Detect changed paths
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         id: filter
         with:
           filters: |
@@ -213,7 +213,7 @@ jobs:
 
       - name: Scan artifact for vulnerabilities
         if: steps.artifact.outputs.found == 'true'
-        uses: aquasecurity/trivy-action@0.34.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: 'fs'
           scan-ref: ${{ steps.artifact.outputs.path }}
